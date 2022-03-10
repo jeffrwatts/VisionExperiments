@@ -1,6 +1,8 @@
 package com.jeffrwatts.visionexperiments
 
 import android.graphics.Bitmap
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -38,6 +40,15 @@ class BasicCameraActivity : AppCompatActivity() {
     }
 
     private fun startCamera() {
+        var calibrationMatrix: FloatArray? = null
+        val cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
+        cameraManager.cameraIdList.forEach { cameraId ->
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
+                calibrationMatrix = characteristics.get(CameraCharacteristics.LENS_INTRINSIC_CALIBRATION)
+            }
+        }
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({

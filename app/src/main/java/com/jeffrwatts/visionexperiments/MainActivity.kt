@@ -41,7 +41,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun testVisualOdometry() {
         lifecycleScope.launch {
-            val analyzer = VisualOdometryAnalyzer { x, y, z ->
+            // [f_x, f_y, c_x, c_y, s]
+            val f_x = 640f
+            val c_x = 640f
+            val f_y = 480f
+            val c_y = 480f
+
+            val calibrationMatrix = FloatArray(5).also {
+                it[0] = f_x
+                it[1] = f_y
+                it[2] = c_x
+                it[3] = c_y
+                it[4] = 0f
+            }
+
+            val analyzer = VisualOdometryAnalyzer (calibrationMatrix) { x, y, z ->
                 Log.d(TAG, "x=$x; y=$y; z=$z")
             }
             analyzer.test(this@MainActivity)

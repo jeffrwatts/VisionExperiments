@@ -19,7 +19,8 @@ import java.lang.StringBuilder
 
 typealias PositionListener = (x: Float, y: Float, z: Float) -> Unit
 
-class VisualOdometryAnalyzer (private val positionListener: PositionListener): ImageAnalysis.Analyzer {
+class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
+                              private val positionListener: PositionListener): ImageAnalysis.Analyzer {
     companion object {
         private const val TAG = "VisualOdometryAnalyzer"
         private const val SAMPLE_RATE_MS = 500
@@ -28,13 +29,18 @@ class VisualOdometryAnalyzer (private val positionListener: PositionListener): I
 
     private var isTracking = false
     private var lastProcessedTime = System.currentTimeMillis()
+
+    private var cameraMatrix: Mat
     private var position = Mat.eye(4, 4, CvType.CV_64FC1)
+
+    init {
+        cameraMatrix = createCameraMatrix(calibrationMatrix)
+    }
 
     private val sift = SIFT.create()
     private val flannBasedMatcher = FlannBasedMatcher()
     private var previousDescriptors = Mat()
     private var previousKeyPointsMat = MatOfKeyPoint()
-    private var cameraMatrix = Mat()
 
     fun startTracking (resetPosition: Boolean) {
         isTracking = true
@@ -160,8 +166,42 @@ class VisualOdometryAnalyzer (private val positionListener: PositionListener): I
         position = positionUpdated
     }
 
+    private fun createCameraMatrix(calibrationParameters: FloatArray): Mat {
+        // [f_x, f_y, c_x, c_y, s]
+        val cameraMatrix = Mat(3,3, CvType.CV_32F)
+        cameraMatrix.put(0, 0, FloatArray(1) { calibrationParameters[0] })
+        cameraMatrix.put(0, 1, FloatArray(1) { calibrationParameters[4] })
+        cameraMatrix.put(0, 2, FloatArray(1) { calibrationParameters[2] })
+        cameraMatrix.put(1, 0, FloatArray(1) { 0.0f })
+        cameraMatrix.put(1, 1, FloatArray(1) { calibrationParameters[1]})
+        cameraMatrix.put(1, 2, FloatArray(1) { calibrationParameters[3] })
+        cameraMatrix.put(2, 0, FloatArray(1) { 0.0f })
+        cameraMatrix.put(2, 1, FloatArray(1) { 0.0f })
+        cameraMatrix.put(2, 2, FloatArray(1) { 1.0f })
+
+        val displayCameraMatrix = displayMatrix(cameraMatrix)
+        return cameraMatrix
+    }
+    private fun displayMatrix(mat: Mat): String {
+        val displayMatrix = StringBuilder()
+        displayMatrix.append("[")
+        for (row in 0 until mat.rows()) {
+            displayMatrix.append("[")
+            for (col in 0 until mat.cols()) {
+                val value = mat[row, col][0]
+                if (col != 0) {
+                    displayMatrix.append(", ")
+                }
+                displayMatrix.append(value)
+            }
+            displayMatrix.append("]")
+        }
+        displayMatrix.append("]")
+        return displayMatrix.toString()
+    }
+
+
     fun test(context: Context) {
-        cameraMatrix = createTestCameraMatrix()
         var previousDepthMatrix: Array<FloatArray> = Array(0) { FloatArray(0) }
 
         for (i in 1..52) {
@@ -197,44 +237,6 @@ class VisualOdometryAnalyzer (private val positionListener: PositionListener): I
             row ++
         }
         return depthMatrix
-    }
-
-    private fun displayMatrix(mat: Mat): String {
-        val displayMatrix = StringBuilder()
-        displayMatrix.append("[")
-        for (row in 0 until mat.rows()) {
-            displayMatrix.append("[")
-            for (col in 0 until mat.cols()) {
-                val value = mat[row, col][0]
-                if (col != 0) {
-                    displayMatrix.append(", ")
-                }
-                displayMatrix.append(value)
-            }
-            displayMatrix.append("]")
-        }
-        displayMatrix.append("]")
-        return displayMatrix.toString()
-    }
-
-    private fun createTestCameraMatrix(): Mat {
-        val f_x = 640f
-        val c_x = 640f
-        val f_y = 480f
-        val c_y = 480f
-
-        val cameraMatrix = Mat(3,3, CvType.CV_32F)
-        cameraMatrix.put(0, 0, FloatArray(1) { f_x })
-        cameraMatrix.put(0, 1, FloatArray(1) { 0.0f })
-        cameraMatrix.put(0, 2, FloatArray(1) { c_x })
-        cameraMatrix.put(1, 0, FloatArray(1) { 0.0f })
-        cameraMatrix.put(1, 1, FloatArray(1) { f_y })
-        cameraMatrix.put(1, 2, FloatArray(1) { c_y })
-        cameraMatrix.put(2, 0, FloatArray(1) { 0.0f })
-        cameraMatrix.put(2, 1, FloatArray(1) { 0.0f })
-        cameraMatrix.put(2, 2, FloatArray(1) { 1.0f })
-
-        return cameraMatrix
     }
 }
 
