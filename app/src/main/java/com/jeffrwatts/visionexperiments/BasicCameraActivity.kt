@@ -93,6 +93,8 @@ class BasicCameraActivity : AppCompatActivity() {
                 val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
                 bitmap.copyPixelsToBuffer(image.planes[0].buffer)
                 Log.d(TAG, "timeDelta = ${delta}; width = ${bitmap.width}; height = ${bitmap.height};")
+
+
             }
             image.close()
         }

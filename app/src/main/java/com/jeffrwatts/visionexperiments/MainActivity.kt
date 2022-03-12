@@ -21,6 +21,7 @@ class MainActivity : AppCompatActivity() {
     }
     private val buttonBasicCamera: Button by lazy { findViewById(R.id.buttonBasicCamera) }
     private val buttonVisualOdometryTest: Button by lazy { findViewById(R.id.buttonVisualOdometryTest) }
+    private val buttonVisualOdometry: Button by lazy { findViewById(R.id.buttonVisualOdometry) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +32,9 @@ class MainActivity : AppCompatActivity() {
         buttonBasicCamera.setOnClickListener { launchActivity(BasicCameraActivity::class.java) }
 
         buttonVisualOdometryTest.setOnClickListener { testVisualOdometry() }
+
+        buttonVisualOdometry.isEnabled = false
+        buttonVisualOdometry.setOnClickListener { launchActivity(VisualOdometryActivity::class.java) }
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST_CODE)
@@ -64,6 +68,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun onCameraPermissionsGranted() {
         buttonBasicCamera.isEnabled = true
+        buttonVisualOdometry.isEnabled = true
     }
 
     private fun launchActivity(klass: Class<*>) {

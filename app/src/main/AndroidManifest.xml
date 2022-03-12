@@ -13,6 +13,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.VisionExperiments">
         <activity
+            android:name=".VisualOdometryActivity"
+            android:exported="false" />
+        <activity
             android:name=".BasicCameraActivity"
             android:exported="false" />
         <activity

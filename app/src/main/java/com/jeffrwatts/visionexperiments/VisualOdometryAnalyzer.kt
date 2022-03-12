@@ -73,6 +73,7 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
             val posZ = position[2, 3][0]
             positionListener(posX.toFloat(), posY.toFloat(), posZ.toFloat())
         }
+        image.close()
     }
 
     private fun updatePositionFromImage(currentFrameBitmap: Bitmap, previousDepthMatrix: Array<FloatArray>?) {
