@@ -1,11 +1,12 @@
 package com.jeffrwatts.visionexperiments
 
 import android.graphics.Bitmap
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
-import androidx.appcompat.app.AppCompatActivity
+import android.graphics.Matrix
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
+import android.widget.ImageView
+import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888
@@ -14,9 +15,12 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.Exception
+
+typealias ImageListener = (image: Bitmap) -> Unit
 
 class BasicCameraActivity : AppCompatActivity() {
 
@@ -24,7 +28,10 @@ class BasicCameraActivity : AppCompatActivity() {
         private const val TAG = "BasicCameraActivity"
     }
 
+    private var captureOnNextFrame = false
     private val cameraViewFinder: PreviewView by lazy { findViewById(R.id.cameraViewFinder) }
+    private val buttonCaptureFrame: Button by lazy { findViewById(R.id.buttonCaptureFrame) }
+    private val imageView: ImageView by lazy { findViewById(R.id.imageView) }
     private lateinit var cameraExecutor: ExecutorService
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +39,8 @@ class BasicCameraActivity : AppCompatActivity() {
         setContentView(R.layout.activity_basic_camera)
         cameraExecutor = Executors.newSingleThreadExecutor()
         startCamera()
+
+        buttonCaptureFrame.setOnClickListener { captureOnNextFrame = true }
     }
 
     override fun onDestroy() {
@@ -40,15 +49,6 @@ class BasicCameraActivity : AppCompatActivity() {
     }
 
     private fun startCamera() {
-        var calibrationMatrix: FloatArray? = null
-        val cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
-        cameraManager.cameraIdList.forEach { cameraId ->
-            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
-            if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
-                calibrationMatrix = characteristics.get(CameraCharacteristics.LENS_INTRINSIC_CALIBRATION)
-            }
-        }
-
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
@@ -61,7 +61,15 @@ class BasicCameraActivity : AppCompatActivity() {
             val imageAnalyzer = ImageAnalysis.Builder()
                 .setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build().also {
-                it.setAnalyzer(cameraExecutor, Analyzer())
+                it.setAnalyzer(cameraExecutor, Analyzer { image: Bitmap ->
+                    if (captureOnNextFrame) {
+                        captureOnNextFrame = false
+                        saveFrameImage(image, "frame0001.webp")
+                        runOnUiThread {
+                            imageView.setImageBitmap(image)
+                        }
+                    }
+                })
             }
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -77,7 +85,17 @@ class BasicCameraActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private class Analyzer : ImageAnalysis.Analyzer {
+    private fun saveFrameImage(bitmap: Bitmap, filename: String) {
+        try {
+            FileOutputStream(File(filesDir, filename)).use {
+                bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSLESS, 100, it)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception writing file", e)
+        }
+    }
+
+    private class Analyzer (private val imageListener: ImageListener) : ImageAnalysis.Analyzer {
         companion object {
             private const val sampleRate = 500 // in milliseconds.
         }
@@ -91,10 +109,14 @@ class BasicCameraActivity : AppCompatActivity() {
                 lastProcessedTime = frameTime
 
                 val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-                bitmap.copyPixelsToBuffer(image.planes[0].buffer)
+                bitmap.copyPixelsFromBuffer(image.planes[0].buffer)
                 Log.d(TAG, "timeDelta = ${delta}; width = ${bitmap.width}; height = ${bitmap.height};")
 
+                val matrix = Matrix()
+                matrix.postRotate(image.imageInfo.rotationDegrees.toFloat())
+                val bitmapRotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
+                imageListener(bitmapRotated)
             }
             image.close()
         }

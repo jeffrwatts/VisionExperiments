@@ -66,7 +66,7 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
             matrix.postRotate(image.imageInfo.rotationDegrees.toFloat())
             val bitmapRotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
-            updatePositionFromImage(bitmapRotated, null)
+            updatePositionFromImage(bitmapRotated)
 
             val posX = position[0, 3][0]
             val posY = position[1, 3][0]
@@ -76,7 +76,7 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
         image.close()
     }
 
-    private fun updatePositionFromImage(currentFrameBitmap: Bitmap, previousDepthMatrix: Array<FloatArray>?) {
+    private fun updatePositionFromImage(currentFrameBitmap: Bitmap) {
         // Convert Image to Matrix
         val currentFrame = Mat()
         Utils.bitmapToMat(currentFrameBitmap, currentFrame)
@@ -106,19 +106,8 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
                     if (match[0].distance < MATCH_DISTANCE_THRESHOLD * match[1].distance) {
                         val previousImagePoint = previousKeyPoints[match[0].queryIdx].pt
                         val currentImagePoint = currentKeyPoints[match[0].trainIdx].pt
-
-                        var usePoints = true
-
-                        // Used for testing only.
-                        previousDepthMatrix?.let { depthMatrix ->
-                            val depth = depthMatrix[previousImagePoint.y.toInt()][previousImagePoint.x.toInt()]
-                            usePoints = depth < 500
-                        }
-
-                        if (usePoints) {
-                            previousImagePoints.add(previousImagePoint)
-                            currentImagePoints.add(currentImagePoint)
-                        }
+                        previousImagePoints.add(previousImagePoint)
+                        currentImagePoints.add(currentImagePoint)
                     }
                 }
             }
@@ -128,12 +117,16 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
             val currentImagePointsMat = MatOfPoint().also { it.fromList(currentImagePoints) }
 
             val E = Calib3d.findEssentialMat(previousImagePointsMat, currentImagePointsMat, cameraMatrix)
+            val displayE = displayMatrix(E)
 
             // Recover the Rotation and translation matrices from E
             val R = Mat()
             val t = Mat()
 
             Calib3d.recoverPose(E, previousImagePointsMat, currentImagePointsMat, cameraMatrix, R, t)
+
+            val displayR = displayMatrix(R)
+            val displayt = displayMatrix(t)
 
             updatePositionFromRt(R, t)
         }
@@ -203,17 +196,11 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
 
 
     fun test(context: Context) {
-        var previousDepthMatrix: Array<FloatArray> = Array(0) { FloatArray(0) }
-
         for (i in 1..52) {
             val frameAsset = if (i < 10) "rgb/frame_0000$i.png" else "rgb/frame_000$i.png"
-            val depthAsset = if (i < 10) "depth/frame_0000$i.dat" else "depth/frame_000$i.dat"
             val currentFrameBitmap = BitmapFactory.decodeStream(context.assets.open(frameAsset))
-            val currentDepthMatrix = loadDepthData(context, depthAsset)
 
-            updatePositionFromImage(currentFrameBitmap, previousDepthMatrix)
-
-            previousDepthMatrix = currentDepthMatrix
+            updatePositionFromImage(currentFrameBitmap)
 
             val posX = position[0, 3][0]
             val posY = position[1, 3][0]

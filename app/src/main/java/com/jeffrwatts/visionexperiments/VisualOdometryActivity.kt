@@ -1,6 +1,7 @@
 package com.jeffrwatts.visionexperiments
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
@@ -18,7 +19,11 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
+import java.io.File
+import java.io.FileInputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -36,6 +41,7 @@ class VisualOdometryActivity : AppCompatActivity() {
     private val cameraViewFinder: PreviewView by lazy { findViewById(R.id.cameraViewFinder) }
     private val imageViewFrameDebug: ImageView by lazy { findViewById(R.id.imageViewFrameDebug) }
     private val buttonStartStop: Button by lazy { findViewById(R.id.buttonStartStop) }
+    private val buttonTest: Button by lazy { findViewById(R.id.buttonTest) }
     private val textViewPosition: TextView by lazy { findViewById(R.id.textViewPosition) }
 
     private lateinit var cameraExecutor: ExecutorService
@@ -58,7 +64,30 @@ class VisualOdometryActivity : AppCompatActivity() {
                 tracking = true
             }
         }
+
+        buttonTest.setOnClickListener {
+            test()
+        }
     }
+
+    private fun test() {
+        lifecycleScope.launch {
+            visualOdometryAnalyzer.test(this@VisualOdometryActivity)
+        }
+    }
+
+    //private fun test() {
+    //    lifecycleScope.launch {
+    //        try {
+    //            FileInputStream(File(filesDir, "frame0001.webp")).use {
+    //                val bitmap = BitmapFactory.decodeStream(it)
+    //                visualOdometryAnalyzer.testSameFrame(bitmap)
+    //            }
+    //        } catch (e: Exception) {
+    //            Log.e(TAG, "Exception loading image", e)
+    //        }
+    //    }
+    //}
 
     private fun loadLensCalibrationParameters(): FloatArray? {
         var lensCalibrationScaled: FloatArray? = null
@@ -73,6 +102,9 @@ class VisualOdometryActivity : AppCompatActivity() {
                         lensCalibrationScaled = FloatArray(lensCalibration.size).also { scaled ->
                             lensCalibration.forEachIndexed { index, param ->
                                 scaled[index] = param*scalingFactor
+                                if (index == 2 || index == 3) {
+                                    scaled[index] = scaled[index] * 2
+                                }
                             }
                         }
                     }
