@@ -12,10 +12,8 @@ import org.opencv.calib3d.Calib3d
 import org.opencv.core.*
 import org.opencv.features2d.FlannBasedMatcher
 import org.opencv.features2d.SIFT
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.lang.Exception
-import java.lang.StringBuilder
+import kotlin.text.StringBuilder
 
 typealias PositionListener = (x: Float, y: Float, z: Float) -> Unit
 
@@ -196,6 +194,10 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
 
 
     fun test(context: Context) {
+        val xTraj = FloatArray(52)
+        val yTraj = FloatArray(52)
+        val zTraj = FloatArray(52)
+
         for (i in 1..52) {
             val frameAsset = if (i < 10) "rgb/frame_0000$i.png" else "rgb/frame_000$i.png"
             val currentFrameBitmap = BitmapFactory.decodeStream(context.assets.open(frameAsset))
@@ -206,25 +208,42 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
             val posY = position[1, 3][0]
             val posZ = position[2, 3][0]
 
+            xTraj[i-1] = posX.toFloat()
+            yTraj[i-1] = posY.toFloat()
+            zTraj[i-1] = posZ.toFloat()
+
             Log.d(TAG, "Iteration: $i; X=$posX; Y=$posY; Z=$posZ")
         }
+        dumpToNumpyArrayStatement(xTraj, yTraj, zTraj)
     }
 
-    private fun loadDepthData(context: Context, assetPath: String): Array<FloatArray> {
-        val depthMatrix: Array<FloatArray> = Array(960) { FloatArray(1280) }
-        val inputStream = context.assets.open(assetPath)
-        val reader = BufferedReader(InputStreamReader(inputStream))
+    private fun dumpToNumpyArrayStatement(xTraj: FloatArray, yTraj: FloatArray, zTraj: FloatArray) {
+        val dump = StringBuilder("trajectory = np.array([")
 
-        var line: String?
-        var row = 0
-        while (reader.readLine().also { line = it } != null) {
-            val depths: List<String>? = line?.split(",")
-            depths?.forEachIndexed { index, s ->
-                depthMatrix[row][index] = s.toFloat() * 1000.0f
-            }
-            row ++
+        dump.append("[")
+        xTraj.forEachIndexed { index, fl ->
+            if (index != 0) { dump.append(", ")}
+            dump.append(fl)
         }
-        return depthMatrix
+        dump.append("], ")
+
+        dump.append("[")
+        yTraj.forEachIndexed { index, fl ->
+            if (index != 0) { dump.append(", ")}
+            dump.append(fl)
+        }
+        dump.append("], ")
+
+        dump.append("[")
+        zTraj.forEachIndexed { index, fl ->
+            if (index != 0) { dump.append(", ")}
+            dump.append(fl)
+        }
+        dump.append("]")
+
+        dump.append("])")
+
+        val dumpReturn = dump.toString()
     }
 }
 
