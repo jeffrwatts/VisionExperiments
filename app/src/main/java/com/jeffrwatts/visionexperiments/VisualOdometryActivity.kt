@@ -8,6 +8,7 @@ import android.hardware.camera2.CameraManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.util.Size
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
@@ -60,7 +61,8 @@ class VisualOdometryActivity : AppCompatActivity() {
                 tracking = false
             } else {
                 buttonStartStop.text = "Stop"
-                visualOdometryAnalyzer.startTracking(resetPosition = true)
+                visualOdometryAnalyzer.resetPosition()
+                visualOdometryAnalyzer.startTracking()
                 tracking = true
             }
         }
@@ -72,22 +74,9 @@ class VisualOdometryActivity : AppCompatActivity() {
 
     private fun test() {
         lifecycleScope.launch {
-            visualOdometryAnalyzer.test(this@VisualOdometryActivity)
+            visualOdometryAnalyzer.testWithPhotos(this@VisualOdometryActivity, 60)
         }
     }
-
-    //private fun test() {
-    //    lifecycleScope.launch {
-    //        try {
-    //            FileInputStream(File(filesDir, "frame0001.webp")).use {
-    //                val bitmap = BitmapFactory.decodeStream(it)
-    //                visualOdometryAnalyzer.testSameFrame(bitmap)
-    //            }
-    //        } catch (e: Exception) {
-    //            Log.e(TAG, "Exception loading image", e)
-    //        }
-    //    }
-    //}
 
     private fun loadLensCalibrationParameters(): FloatArray? {
         var lensCalibrationScaled: FloatArray? = null
@@ -97,14 +86,14 @@ class VisualOdometryActivity : AppCompatActivity() {
             if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
                 val pixelArraySize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE)
                 pixelArraySize?.let { size ->
-                    val scalingFactor = 480.0f / size.height
+                    val scalingFactor = 768.0f / size.height
                     characteristics.get(CameraCharacteristics.LENS_INTRINSIC_CALIBRATION)?.let { lensCalibration ->
                         lensCalibrationScaled = FloatArray(lensCalibration.size).also { scaled ->
                             lensCalibration.forEachIndexed { index, param ->
                                 scaled[index] = param*scalingFactor
-                                if (index == 2 || index == 3) {
-                                    scaled[index] = scaled[index] * 2
-                                }
+                                //if (index == 2 || index == 3) {
+                                //    scaled[index] = scaled[index] * 2
+                                //}
                             }
                         }
                     }
@@ -141,6 +130,7 @@ class VisualOdometryActivity : AppCompatActivity() {
 
             val imageAnalyzer = ImageAnalysis.Builder()
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                .setTargetResolution(Size(1020, 768))
                 .build().also {
                     it.setAnalyzer(cameraExecutor, visualOdometryAnalyzer)
                 }

@@ -12,7 +12,9 @@ import org.opencv.calib3d.Calib3d
 import org.opencv.core.*
 import org.opencv.features2d.FlannBasedMatcher
 import org.opencv.features2d.SIFT
-import java.lang.Exception
+import java.io.File
+import java.io.FileInputStream
+import kotlin.Exception
 import kotlin.text.StringBuilder
 
 typealias PositionListener = (x: Float, y: Float, z: Float) -> Unit
@@ -40,11 +42,12 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
     private var previousDescriptors = Mat()
     private var previousKeyPointsMat = MatOfKeyPoint()
 
-    fun startTracking (resetPosition: Boolean) {
+    fun startTracking () {
         isTracking = true
-        if (resetPosition) {
-            position = Mat.eye(4, 4, CvType.CV_64FC1)
-        }
+    }
+
+    fun resetPosition() {
+        position = Mat.eye(4, 4, CvType.CV_64FC1)
     }
 
     fun pauseTracking () {
@@ -192,8 +195,35 @@ class VisualOdometryAnalyzer (calibrationMatrix: FloatArray,
         return displayMatrix.toString()
     }
 
+    fun testWithPhotos(context: Context, totalFrames: Int) {
+        resetPosition()
+        try {
+            val xTraj = FloatArray(totalFrames)
+            val yTraj = FloatArray(totalFrames)
+            val zTraj = FloatArray(totalFrames)
 
-    fun test(context: Context) {
+            for (frameNumber in 0 until totalFrames) {
+                FileInputStream(File(context.filesDir, "frame$frameNumber.webp")).use {
+                    val currentFrameBitmap = BitmapFactory.decodeStream(it)
+                    updatePositionFromImage(currentFrameBitmap)
+
+                    val posX = position[0, 3][0]
+                    val posY = position[1, 3][0]
+                    val posZ = position[2, 3][0]
+
+                    xTraj[frameNumber] = posX.toFloat()
+                    yTraj[frameNumber] = posY.toFloat()
+                    zTraj[frameNumber] = posZ.toFloat()
+                }
+            }
+            dumpToNumpyArrayStatement(xTraj, yTraj, zTraj)
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception loading image", e)
+        }
+    }
+
+    fun testWithAssets(context: Context) {
+        resetPosition()
         val xTraj = FloatArray(52)
         val yTraj = FloatArray(52)
         val zTraj = FloatArray(52)

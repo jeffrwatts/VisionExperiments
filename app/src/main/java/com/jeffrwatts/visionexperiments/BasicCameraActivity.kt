@@ -4,8 +4,10 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.Bundle
 import android.util.Log
+import android.util.Size
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -28,10 +30,12 @@ class BasicCameraActivity : AppCompatActivity() {
         private const val TAG = "BasicCameraActivity"
     }
 
+    private var frameNumber = 0
     private var captureOnNextFrame = false
     private val cameraViewFinder: PreviewView by lazy { findViewById(R.id.cameraViewFinder) }
     private val buttonCaptureFrame: Button by lazy { findViewById(R.id.buttonCaptureFrame) }
     private val imageView: ImageView by lazy { findViewById(R.id.imageView) }
+    private val textViewCameraImages: TextView by lazy { findViewById(R.id.textViewCameraImages) }
     private lateinit var cameraExecutor: ExecutorService
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,13 +64,17 @@ class BasicCameraActivity : AppCompatActivity() {
 
             val imageAnalyzer = ImageAnalysis.Builder()
                 .setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                .setTargetResolution(Size(1020, 768))
                 .build().also {
                 it.setAnalyzer(cameraExecutor, Analyzer { image: Bitmap ->
                     if (captureOnNextFrame) {
                         captureOnNextFrame = false
-                        saveFrameImage(image, "frame0001.webp")
+                        saveFrameImage(image, "frame$frameNumber.webp")
+                        frameNumber++
                         runOnUiThread {
+                            textViewCameraImages.text = "Camera Images $frameNumber"
                             imageView.setImageBitmap(image)
+
                         }
                     }
                 })
@@ -112,11 +120,11 @@ class BasicCameraActivity : AppCompatActivity() {
                 bitmap.copyPixelsFromBuffer(image.planes[0].buffer)
                 Log.d(TAG, "timeDelta = ${delta}; width = ${bitmap.width}; height = ${bitmap.height};")
 
-                val matrix = Matrix()
-                matrix.postRotate(image.imageInfo.rotationDegrees.toFloat())
-                val bitmapRotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                //val matrix = Matrix()
+                //matrix.postRotate(image.imageInfo.rotationDegrees.toFloat())
+                //val bitmapRotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
-                imageListener(bitmapRotated)
+                imageListener(bitmap)
             }
             image.close()
         }

@@ -14,9 +14,11 @@
         android:theme="@style/Theme.VisionExperiments">
         <activity
             android:name=".VisualOdometryActivity"
+            android:screenOrientation="landscape"
             android:exported="false" />
         <activity
             android:name=".BasicCameraActivity"
+            android:screenOrientation="landscape"
             android:exported="false" />
         <activity
             android:name=".MainActivity"

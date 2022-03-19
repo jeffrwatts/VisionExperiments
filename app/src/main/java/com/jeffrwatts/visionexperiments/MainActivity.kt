@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "x=$x; y=$y; z=$z")
             }
 
-            analyzer.test(this@MainActivity)
+            analyzer.testWithAssets(this@MainActivity)
         }
     }
 
